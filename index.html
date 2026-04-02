@@ -304,6 +304,18 @@ const FLAGS = {
   'Austria':'🇦🇹','Iceland':'🇮🇸','Norway':'🇳🇴','Greece':'🇬🇷','Romania':'🇷🇴',
   'Hungary':'🇭🇺','Slovakia':'🇸🇰','Slovenia':'🇸🇮','Albania':'🇦🇱','Georgia':'🇬🇪',
   'Venezuela':'🇻🇪','Bolivia':'🇧🇴','Chile':'🇨🇱','Guatemala':'🇬🇹',
+  // Extra names that appear in the API
+  'Curacao':'🇨🇼','Côte d\'Ivoire':'🇨🇮','Korea Republic':'🇰🇷','IR Iran':'🇮🇷',
+  'United States':'🇺🇸','Czechia':'🇨🇿','Czech Republic':'🇨🇿','China PR':'🇨🇳',
+  'DR Congo':'🇨🇩','Congo DR':'🇨🇩','Trinidad and Tobago':'🇹🇹',
+  'Bosnia and Herzegovina':'🇧🇦','North Macedonia':'🇲🇰','Kosovo':'🇽🇰',
+  'El Salvador':'🇸🇻','Honduras':'🇭🇳','Jamaica':'🇯🇲','Cuba':'🇨🇺',
+  'Bahrain':'🇧🇭','Jordan':'🇯🇴','Uzbekistan':'🇺🇿','Thailand':'🇹🇭',
+  'Vietnam':'🇻🇳','China':'🇨🇳','India':'🇮🇳','Palestine':'🇵🇸',
+  'Tanzania':'🇹🇿','Uganda':'🇺🇬','Kenya':'🇰🇪','Zimbabwe':'🇿🇼',
+  'Finland':'🇫🇮','Sweden':'🇸🇪','Russia':'🇷🇺','Belarus':'🇧🇾',
+  'Luxembourg':'🇱🇺','Andorra':'🇦🇩','Liechtenstein':'🇱🇮','Moldova':'🇲🇩',
+  'Armenia':'🇦🇲','Azerbaijan':'🇦🇿','Kazakhstan':'🇰🇿','Montenegro':'🇲🇪','Cyprus':'🇨🇾',
 };
 
 // UTC offset numbers
@@ -436,8 +448,22 @@ function renderFixture(round) {
     `· Actualizado ${new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})}`;
 }
 
+const ROUND_ORDER = [
+  'Matchday 1','Matchday 2','Matchday 3','Matchday 4','Matchday 5','Matchday 6',
+  'Matchday 7','Matchday 8','Matchday 9','Matchday 10','Matchday 11','Matchday 12',
+  'Matchday 13','Matchday 14','Matchday 15','Matchday 16','Matchday 17',
+  'Round of 32','Round of 16','Quarter-final','Semi-final','Match for third place','Final'
+];
+
 function buildFilters(matches) {
-  const rounds = ['Todos', ...new Set(matches.map(m=>m.round).filter(Boolean))];
+  const unique = [...new Set(matches.map(m=>m.round).filter(Boolean))];
+  const sorted = unique.sort((a,b) => {
+    const ai = ROUND_ORDER.indexOf(a), bi = ROUND_ORDER.indexOf(b);
+    if (ai !== -1 && bi !== -1) return ai - bi;
+    if (ai !== -1) return -1; if (bi !== -1) return 1;
+    return a.localeCompare(b);
+  });
+  const rounds = ['Todos', ...sorted];
   document.getElementById('rbar').innerHTML = rounds.map(r =>
     `<button class="fb${r==='Todos'?' active':''}" onclick="setRound('${r}',this)">${r}</button>`
   ).join('');
