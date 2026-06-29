@@ -86,10 +86,13 @@ code{background:#0006;padding:1px 5px;border-radius:4px;font-size:.85em}
 .ttable tr.adv td:first-child{box-shadow:inset 4px 0 0 var(--grass)}
 .ttable tr.out{opacity:.5}
 /* bracket */
-.bscroll{overflow-x:auto;padding-bottom:14px;-webkit-overflow-scrolling:touch}
-.bcol{display:inline-block;vertical-align:top;width:225px;margin-right:12px}
+.bscroll{display:flex;align-items:stretch;gap:12px;overflow-x:auto;padding-bottom:14px;-webkit-overflow-scrolling:touch}
+.bcol{display:flex;flex-direction:column;width:225px;flex:0 0 auto}
+.bcards{flex:1;display:flex;flex-direction:column;justify-content:space-around;min-height:0}
 .bround{font-weight:800;color:var(--gold);text-align:center;letter-spacing:1px;text-transform:uppercase;font-size:.78rem;margin-bottom:8px;border-bottom:1px solid var(--line);padding-bottom:5px}
-.kocard{background:var(--paper);color:var(--ink);border-radius:9px;padding:8px;margin-bottom:9px;box-shadow:0 3px 10px rgba(0,0,0,.28);font-size:.8rem}
+.kocard{background:var(--paper);color:var(--ink);border-radius:9px;padding:8px;margin:4px 0;box-shadow:0 3px 10px rgba(0,0,0,.28);font-size:.8rem}
+.thirdplace{margin-top:18px;width:225px}
+.tpcard .kocard{margin:0}
 .kocard.done{border:1px solid var(--grass)}
 .kometa{display:flex;justify-content:space-between;font-size:.62rem;color:#7a857e;margin-bottom:5px}
 .konum{background:var(--board);color:var(--chalk);padding:1px 6px;border-radius:5px;font-weight:700}
@@ -275,8 +278,8 @@ const GS = [
  ["G",1,"Irán","Nueva Zelanda","15 Jun","SoFi Stadium","USA",2,2],
  ["G",2,"Bélgica","Irán","21 Jun","SoFi Stadium","USA",0,0],
  ["G",2,"Nueva Zelanda","Egipto","21 Jun","BC Place","CAN",1,3],
- ["G",3,"Egipto","Irán","26 Jun","Lumen Field","USA",null,null],
- ["G",3,"Nueva Zelanda","Bélgica","26 Jun","BC Place","CAN",null,null],
+ ["G",3,"Egipto","Irán","26 Jun","Lumen Field","USA",1,1],
+ ["G",3,"Nueva Zelanda","Bélgica","26 Jun","BC Place","CAN",1,5],
  ["H",1,"España","Cabo Verde","15 Jun","Mercedes-Benz Stadium","USA",0,0],
  ["H",1,"Arabia Saudita","Uruguay","15 Jun","Hard Rock Stadium","USA",1,1],
  ["H",2,"España","Arabia Saudita","21 Jun","Mercedes-Benz Stadium","USA",4,0],
@@ -293,20 +296,20 @@ const GS = [
  ["J",1,"Austria","Jordania","17 Jun","Levi's Stadium","USA",3,1],
  ["J",2,"Argentina","Austria","22 Jun","Dallas Stadium","USA",2,0],
  ["J",2,"Jordania","Argelia","22 Jun","Levi's Stadium","USA",1,2],
- ["J",3,"Argelia","Austria","27 Jun","Arrowhead Stadium","USA",null,null],
- ["J",3,"Jordania","Argentina","27 Jun","Dallas Stadium","USA",null,null],
+ ["J",3,"Argelia","Austria","27 Jun","Arrowhead Stadium","USA",3,3],
+ ["J",3,"Jordania","Argentina","27 Jun","Dallas Stadium","USA",1,3],
  ["K",1,"Portugal","RD del Congo","17 Jun","NRG Stadium","USA",1,1],
  ["K",1,"Uzbekistán","Colombia","17 Jun","Estadio Azteca","MEX",1,3],
  ["K",2,"Portugal","Uzbekistán","23 Jun","NRG Stadium","USA",5,0],
  ["K",2,"Colombia","RD del Congo","23 Jun","Estadio Akron","MEX",1,0],
- ["K",3,"Colombia","Portugal","27 Jun","Hard Rock Stadium","USA",null,null],
- ["K",3,"RD del Congo","Uzbekistán","27 Jun","Mercedes-Benz Stadium","USA",null,null],
+ ["K",3,"Colombia","Portugal","27 Jun","Hard Rock Stadium","USA",0,0],
+ ["K",3,"RD del Congo","Uzbekistán","27 Jun","Mercedes-Benz Stadium","USA",3,1],
  ["L",1,"Inglaterra","Croacia","17 Jun","Dallas Stadium","USA",4,2],
  ["L",1,"Ghana","Panamá","17 Jun","BMO Field","CAN",1,0],
  ["L",2,"Inglaterra","Ghana","23 Jun","Gillette Stadium","USA",0,0],
  ["L",2,"Panamá","Croacia","23 Jun","BMO Field","CAN",0,1],
- ["L",3,"Panamá","Inglaterra","27 Jun","MetLife Stadium","USA",null,null],
- ["L",3,"Croacia","Ghana","27 Jun","Lincoln Financial Field","USA",null,null],
+ ["L",3,"Panamá","Inglaterra","27 Jun","MetLife Stadium","USA",0,2],
+ ["L",3,"Croacia","Ghana","27 Jun","Lincoln Financial Field","USA",2,1],
 ];
 // knockout: num -> {round, a, b, date, venue, country}. a/b are slot refs.
 // slot refs: {W:'A'} winner grp, {R:'A'} runnerup grp, {T:match} third placeholder, {w:73} winner of match, {l:101} loser
@@ -346,6 +349,10 @@ const KO = {
 };
 // winner-group -> R32 match that hosts its qualifying third
 const THIRD_SLOT = {E:74,I:77,A:79,L:80,D:81,G:82,B:85,K:87};
+// resultados reales eliminatorias: matchNum -> [golesHome, golesAway] (home=slot a, away=slot b)
+const KO_REAL = {
+ 73:[0,1],
+};
 const ANNEX_C={
 "ABCDEFGH":"HGBCAFDE",
 "ABCDEFGI":"CGBDAFEI",
@@ -1121,12 +1128,16 @@ let bracketStale=true;
 function seedReal(){ // precarga resultados oficiales (editables) si no hay storage
   for(const m of GS){ if(m[7]!=null){ const k=gsKey(m); if(!(k in state.results)) state.results[k]=[m[7],m[8]]; } }
 }
+function seedRealKO(){ // precarga resultados oficiales de eliminatorias
+  if(typeof KO_REAL==='undefined') return;
+  for(const mn in KO_REAL){ if(!(mn in state.koResults)) state.koResults[mn]=[KO_REAL[mn][0],KO_REAL[mn][1],1]; }
+}
 function load(){
   try{
     const raw=localStorage.getItem(STORE_KEY);
     if(raw){ const o=JSON.parse(raw); if(o&&o.v===1){ state=Object.assign(state,o); } }
   }catch(e){}
-  seedReal();
+  seedReal(); seedRealKO();
 }
 function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){} }
 
@@ -1318,22 +1329,29 @@ function concreteTeam(ref,st,thirdMap,view){
   return null;
 }
 
+// orden de árbol: cada par que luego se cruza queda adyacente (W74 vs W77 -> 74,77 juntos)
+const BRACKET_ORDER={
+  R32:[74,77,73,75,83,84,81,82,76,78,79,80,86,88,85,87],
+  R16:[89,90,93,94,91,92,95,96],
+  QF:[97,98,99,100],
+  SF:[101,102],
+  F:[104]
+};
 function renderBracket(){
   const adj=activeAdj();
   const st=allStandings(state.results,adj,false);
   let thirdMap=null;
   if(allComplete()){ const th=computeThirds(st,adj); thirdMap=annexAssign(th.qualifiedGroups); }
   const view=buildKoView(st,thirdMap);
-  const rounds={R32:[],R16:[],QF:[],SF:[],'3P':[],F:[]};
-  for(const mn of Object.keys(KO).map(Number).sort((a,b)=>a-b)) rounds[KO[mn].r].push(mn);
   let cols='';
-  for(const rk of ['R32','R16','QF','SF','F','3P']){
-    let cards=rounds[rk].map(mn=>koCard(mn,st,thirdMap,view)).join('');
-    cols+=`<div class="bcol"><div class="bround">${ROUND_NAME[rk]}</div>${cards}</div>`;
+  for(const rk of ['R32','R16','QF','SF','F']){
+    const cards=BRACKET_ORDER[rk].map(mn=>koCard(mn,st,thirdMap,view)).join('');
+    cols+=`<div class="bcol"><div class="bround">${ROUND_NAME[rk]}</div><div class="bcards">${cards}</div></div>`;
   }
+  const third=`<div class="thirdplace"><div class="bround">${ROUND_NAME['3P']}</div><div class="tpcard">${koCard(103,st,thirdMap,view)}</div></div>`;
   const stale = bracketStale? `<p class="note warn">El cuadro refleja los resultados cargados. Cargá marcadores de eliminatorias para propagar ganadores. Las probabilidades por llave dependen del modelo activo.</p>`:'';
   document.getElementById('tab-bracket').innerHTML=
-    `<h2>Cuadro de eliminatorias</h2>${stale}<div class="bscroll">${cols}</div>`;
+    `<h2>Cuadro de eliminatorias</h2>${stale}<div class="bscroll">${cols}</div>${third}`;
 }
 function koCard(mn,st,thirdMap,view){
   const k=KO[mn]; const v=view[mn];
@@ -1458,7 +1476,7 @@ function renderDatos(){
       <li><b>✔ Mapa de cruces / feeders (Match 73–104):</b> oficial (no genérico). Llaves no adyacentes según el cuadro real.</li>
       <li><b>✔ Restricciones Annexo C de terceros:</b> tabla oficial completa (495 combinaciones) embebida y validada (biyección perfecta, 0 errores).</li>
       <li><b>✔ Sedes y fechas de cada ronda eliminatoria:</b> oficiales.</li>
-      <li><b>✔ Resultados precargados:</b> reales hasta el 26 Jun. Completas las jornadas 1–3 de los grupos A–F y H–I, más J1–J2 de G, J, K, L. Quedan <b>abiertos</b> (no inventados): Grupo G J3 (en juego), y las J3 de los grupos J, K y L (27 Jun). Las eliminatorias arrancan el 28 Jun.</li>
+      <li><b>✔ Resultados precargados:</b> reales hasta el 29 Jun. <b>Fase de grupos completa</b> (los 72 partidos) y arrancó la Ronda de 32: precargado el 1.º octavo (Canadá 1–0 Sudáfrica, 28 Jun). Los octavos del 29 Jun en adelante quedan <b>abiertos</b> (se juegan ahora): cargalos vos o simulalos. El cuadro completo ya está fijado porque el Anexo C asignó los 8 terceros.</li>
       <li><b>⚠ Calificaciones de fuerza (0–100):</b> <b>aproximación propia</b> a partir del ranking FIFA + calidad de plantilla. No es una métrica oficial; podés ajustarla mentalmente. Es lo único estimado del simulador.</li>
     </ul>`;
 }
@@ -1470,13 +1488,13 @@ function doExport(){
 function doImport(el){
   const f=el.files[0]; if(!f)return; const r=new FileReader();
   r.onload=()=>{ try{ const o=JSON.parse(r.result);
-    if(o&&o.results){ state.results=o.results||{}; state.koResults=o.koResults||{}; state.learnOn=!!o.learnOn; seedReal(); save(); renderAll(); alert('Datos importados.'); }
+    if(o&&o.results){ state.results=o.results||{}; state.koResults=o.koResults||{}; state.learnOn=!!o.learnOn; seedReal(); seedRealKO(); save(); renderAll(); alert('Datos importados.'); }
     else alert('Archivo no válido.'); }catch(e){ alert('No se pudo leer el archivo.'); } };
   r.readAsText(f);
 }
 function doReset(){
   if(!confirm('¿Reiniciar a los resultados oficiales y borrar tus ediciones?'))return;
-  state.results={}; state.koResults={}; seedReal(); save(); renderAll();
+  state.results={}; state.koResults={}; seedReal(); seedRealKO(); save(); renderAll();
 }
 
 /* ============================ TABS / INIT ============================ */
